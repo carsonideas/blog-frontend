@@ -1,3 +1,4 @@
+
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -14,7 +15,7 @@ import {
 } from '@mui/material'
 import { useBlogStore } from '../stores/blogStore'
 import { BlogContent } from '../components/BlogContent'
-import { isValidBlogTitle } from '../utils/validation'
+import { isValidBlogTitle, isValidBlogContent } from '../utils/validation'
 
 const CreateBlogPage = () => {
   const [formData, setFormData] = useState({
@@ -27,8 +28,9 @@ const CreateBlogPage = () => {
     content: ''
   })
   const [activeTab, setActiveTab] = useState(0)
+  const [success, setSuccess] = useState('')
   const navigate = useNavigate()
-  const { createBlog, loading, error } = useBlogStore()
+  const { createBlog, loading, error, clearError } = useBlogStore()
 
   const validateForm = () => {
     const errors = {
@@ -40,8 +42,8 @@ const CreateBlogPage = () => {
       errors.title = 'Title must be between 3 and 100 characters'
     }
 
-    if (!formData.content.trim()) {
-      errors.content = 'Content is required'
+    if (!isValidBlogContent(formData.content)) {
+      errors.content = 'Content must be at least 100 characters long'
     }
 
     setValidationErrors(errors)
@@ -51,6 +53,8 @@ const CreateBlogPage = () => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
+    setSuccess('') // Clear success message
+    
     // Clear validation error when user starts typing
     if (validationErrors[name as keyof typeof validationErrors]) {
       setValidationErrors(prev => ({ ...prev, [name]: '' }))
@@ -59,16 +63,29 @@ const CreateBlogPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    clearError() // Clear any previous errors
+    setSuccess('')
 
     if (!validateForm()) {
       return
     }
 
-    await createBlog(formData)
-    
-    // Check if there's no error after creation attempt
-    if (!error) {
-      navigate('/blogs')
+    try {
+      const newBlog = await createBlog({
+        title: formData.title.trim(),
+        content: formData.content.trim(),
+        imageUrl: formData.imageUrl.trim() || undefined
+      })
+      
+      setSuccess('Blog created successfully!')
+      
+      // Navigate to the new blog or blogs list after a short delay
+      setTimeout(() => {
+        navigate('/blogs')
+      }, 1500)
+    } catch (error) {
+      console.error('Failed to create blog:', error)
+      // Error is already handled in the store
     }
   }
 
@@ -94,6 +111,12 @@ const CreateBlogPage = () => {
             </Alert>
           )}
 
+          {success && (
+            <Alert severity="success" sx={{ mb: 2 }}>
+              {success}
+            </Alert>
+          )}
+
           <Box component="form" onSubmit={handleSubmit}>
             <TextField
               fullWidth
@@ -105,7 +128,7 @@ const CreateBlogPage = () => {
               required
               disabled={loading}
               error={!!validationErrors.title}
-              helperText={validationErrors.title || 'Enter a title for your blog'}
+              helperText={validationErrors.title || 'Enter a title for your blog (3-100 characters)'}
             />
             <TextField
               fullWidth
@@ -138,7 +161,7 @@ const CreateBlogPage = () => {
                 required
                 disabled={loading}
                 error={!!validationErrors.content}
-                helperText={validationErrors.content || 'Use Markdown syntax for formatting'}
+                helperText={validationErrors.content || `Use Markdown syntax for formatting (minimum 100 characters, current: ${formData.content.length})`}
               />
             </Box>
 
@@ -161,7 +184,7 @@ const CreateBlogPage = () => {
               <Button
                 type="submit"
                 variant="contained"
-                disabled={loading}
+                disabled={loading || !!success}
               >
                 {loading ? <CircularProgress size={24} /> : 'Create Blog'}
               </Button>
@@ -181,4 +204,3 @@ const CreateBlogPage = () => {
 }
 
 export default CreateBlogPage
-

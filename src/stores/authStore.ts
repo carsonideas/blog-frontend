@@ -1,4 +1,5 @@
 
+
 import { create } from 'zustand';
 import { apiClient } from '../utils/api';
 import { User } from '../types/User';
@@ -88,9 +89,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   updateProfile: async (data: ProfileUpdate) => {
     set({ loading: true, error: null });
     try {
-      const response = await apiClient.put<User>('/api/user/profile', data);
-      localStorage.setItem('user', JSON.stringify(response));
-      set({ user: response, loading: false });
+      const response = await apiClient.put<{ user: User }>('/api/user/profile', data);
+      const updatedUser = response.user;
+      
+      // Update localStorage with new user data
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      
+      set({ user: updatedUser, loading: false });
     } catch (error: any) {
       console.error('Update profile error:', error);
       set({ error: error.message || 'Profile update failed', loading: false });

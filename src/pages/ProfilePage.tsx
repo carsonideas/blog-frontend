@@ -1,3 +1,5 @@
+
+
 import { useState, useEffect } from 'react'
 import {
   Container,
@@ -9,17 +11,21 @@ import {
   Alert,
   CircularProgress,
   Avatar,
+  Grid,
+  // Divider,
 } from '@mui/material'
 import { useAuthStore } from '../stores/authStore'
 import { isValidEmail, isValidPassword, isValidUsername, isValidName } from '../utils/validation'
 
 const ProfilePage = () => {
-  const { user, updateProfile, updatePassword, loading, error } = useAuthStore()
-  const [formData, setFormData] = useState({
+  const { user, updateProfile, updatePassword, loading, error, clearError } = useAuthStore()
+  const [profileData, setProfileData] = useState({
     username: '',
     email: '',
     firstName: '',
-    lastName: '',
+    lastName: ''
+  })
+  const [passwordData, setPasswordData] = useState({
     currentPassword: '',
     newPassword: ''
   })
@@ -35,19 +41,21 @@ const ProfilePage = () => {
 
   useEffect(() => {
     if (user) {
-      setFormData(prev => ({
-        ...prev,
+      setProfileData({
         username: user.username || '',
         email: user.email || '',
         firstName: user.firstName || '',
-        lastName: user.lastName || '',
-        currentPassword: '',
-        newPassword: ''
-      }))
+        lastName: user.lastName || ''
+      })
     }
   }, [user])
 
-  const validateForm = () => {
+  useEffect(() => {
+    // Clear errors when component mounts
+    clearError()
+  }, [clearError])
+
+  const validateProfileForm = () => {
     const errors = {
       username: '',
       email: '',
@@ -57,100 +65,134 @@ const ProfilePage = () => {
       newPassword: ''
     }
 
-    if (!isValidUsername(formData.username)) {
+    if (!isValidUsername(profileData.username)) {
       errors.username = 'Username must be 3-20 characters and can only contain letters, numbers, and underscores'
     }
 
-    if (!isValidEmail(formData.email)) {
+    if (!isValidEmail(profileData.email)) {
       errors.email = 'Please enter a valid email address'
     }
 
-    if (formData.firstName && !isValidName(formData.firstName)) {
-      errors.firstName = 'First name can only contain letters and must be between 2-30 characters'
+    if (!profileData.firstName.trim()) {
+      errors.firstName = 'First name is required'
+    } else if (!isValidName(profileData.firstName)) {
+      errors.firstName = 'First name can only contain letters, spaces, hyphens, and apostrophes (2-50 characters)'
     }
 
-    if (formData.lastName && !isValidName(formData.lastName)) {
-      errors.lastName = 'Last name can only contain letters and must be between 2-30 characters'
+    if (!profileData.lastName.trim()) {
+      errors.lastName = 'Last name is required'
+    } else if (!isValidName(profileData.lastName)) {
+      errors.lastName = 'Last name can only contain letters, spaces, hyphens, and apostrophes (2-50 characters)'
     }
 
-    // Password validation only if either field is filled
-    if (formData.currentPassword || formData.newPassword) {
-      if (!formData.currentPassword) {
-        errors.currentPassword = 'Current password is required to update password'
-      }
-      if (!formData.newPassword) {
-        errors.newPassword = 'New password is required to update password'
-      }
-      if (formData.newPassword && !isValidPassword(formData.newPassword)) {
-        errors.newPassword = 'Password must be at least 8 characters long and contain uppercase, lowercase, number, and special character'
-      }
-    }
-
-    setValidationErrors(errors)
-    return !Object.values(errors).some(error => error !== '')
+    setValidationErrors(prev => ({ ...prev, ...errors }))
+    return !errors.username && !errors.email && !errors.firstName && !errors.lastName
   }
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const validatePasswordForm = () => {
+    const errors = {
+      username: '',
+      email: '',
+      firstName: '',
+      lastName: '',
+      currentPassword: '',
+      newPassword: ''
+    }
+
+    if (!passwordData.currentPassword) {
+      errors.currentPassword = 'Current password is required'
+    }
+
+    if (!passwordData.newPassword) {
+      errors.newPassword = 'New password is required'
+    } else if (!isValidPassword(passwordData.newPassword)) {
+      errors.newPassword = 'Password must be at least 8 characters long and contain uppercase, lowercase, number, and special character'
+    }
+
+    setValidationErrors(prev => ({ ...prev, ...errors }))
+    return !errors.currentPassword && !errors.newPassword
+  }
+
+  const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
+    setProfileData(prev => ({ ...prev, [name]: value }))
     setSuccess('') // Clear success message on any change
+    
+    // Clear validation error for this field when user starts typing
+    if (validationErrors[name as keyof typeof validationErrors]) {
+      setValidationErrors(prev => ({ ...prev, [name]: '' }))
+    }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setPasswordData(prev => ({ ...prev, [name]: value }))
+    setSuccess('') // Clear success message on any change
+    
+    // Clear validation error for this field when user starts typing
+    if (validationErrors[name as keyof typeof validationErrors]) {
+      setValidationErrors(prev => ({ ...prev, [name]: '' }))
+    }
+  }
+
+  const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSuccess('')
+    clearError()
 
-    if (!validateForm()) {
+    if (!validateProfileForm()) {
       return
     }
 
-    let hasUpdates = false
-    let profileUpdateSuccess = false
-    let passwordUpdateSuccess = false
-
-    // Update profile if any non-password fields have changed
+    // Check if any profile fields have changed
     if (
       user &&
-      (formData.username !== user.username ||
-        formData.email !== user.email ||
-        formData.firstName !== user.firstName ||
-        formData.lastName !== user.lastName)
+      profileData.username === user.username &&
+      profileData.email === user.email &&
+      profileData.firstName === user.firstName &&
+      profileData.lastName === user.lastName
     ) {
-      hasUpdates = true
-      try {
-        await updateProfile({
-          username: formData.username,
-          email: formData.email,
-          firstName: formData.firstName || undefined,
-          lastName: formData.lastName || undefined
-        })
-        profileUpdateSuccess = !error
-      } catch (err) {
-        profileUpdateSuccess = false
-      }
-    }
-
-    // Update password if both password fields are filled
-    if (formData.currentPassword && formData.newPassword) {
-      hasUpdates = true
-      try {
-        await updatePassword({
-          currentPassword: formData.currentPassword,
-          newPassword: formData.newPassword
-        })
-        passwordUpdateSuccess = !error
-        if (passwordUpdateSuccess) {
-          setFormData(prev => ({ ...prev, currentPassword: '', newPassword: '' }))
-        }
-      } catch (err) {
-        passwordUpdateSuccess = false
-      }
-    }
-
-    if (!hasUpdates) {
       setSuccess('No changes to update')
-    } else if (profileUpdateSuccess || passwordUpdateSuccess) {
-      setSuccess('Profile updated successfully!')
+      return
+    }
+
+    try {
+      await updateProfile({
+        username: profileData.username.trim(),
+        email: profileData.email.trim(),
+        firstName: profileData.firstName.trim(),
+        lastName: profileData.lastName.trim()
+      })
+      
+      if (!error) {
+        setSuccess('Profile updated successfully!')
+      }
+    } catch (err) {
+      console.error('Profile update failed:', err)
+    }
+  }
+
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSuccess('')
+    clearError()
+
+    if (!validatePasswordForm()) {
+      return
+    }
+
+    try {
+      await updatePassword({
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword
+      })
+      
+      if (!error) {
+        setSuccess('Password updated successfully!')
+        setPasswordData({ currentPassword: '', newPassword: '' })
+      }
+    } catch (err) {
+      console.error('Password update failed:', err)
     }
   }
 
@@ -164,9 +206,13 @@ const ProfilePage = () => {
     )
   }
 
+  const displayName = user.firstName && user.lastName 
+    ? `${user.firstName} ${user.lastName}` 
+    : user.username
+
   return (
     <Box sx={{ py: 4 }}>
-      <Container maxWidth="sm">
+      <Container maxWidth="md">
         <Paper sx={{ p: 4 }}>
           <Typography
             variant="h4"
@@ -176,13 +222,19 @@ const ProfilePage = () => {
             Profile
           </Typography>
 
-          <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 4 }}>
             <Avatar
               src={user.profileImage}
-              sx={{ width: 80, height: 80 }}
+              sx={{ width: 100, height: 100, mb: 2 }}
             >
-              {user.username?.[0]?.toUpperCase()}
+              {(user.firstName?.[0] || user.username?.[0] || 'U').toUpperCase()}
             </Avatar>
+            <Typography variant="h6" sx={{ mb: 1 }}>
+              {displayName}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              @{user.username}
+            </Typography>
           </Box>
 
           {error && (
@@ -197,94 +249,130 @@ const ProfilePage = () => {
             </Alert>
           )}
 
-          <Box component="form" onSubmit={handleSubmit}>
-            <TextField
-              fullWidth
-              label="Username"
-              name="username"
-              value={formData.username}
-              onChange={handleChange}
-              margin="normal"
-              required
-              disabled={loading}
-              error={!!validationErrors.username}
-              helperText={validationErrors.username}
-              autoComplete="username"
-            />
-            <TextField
-              fullWidth
-              label="Email"
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              margin="normal"
-              required
-              disabled={loading}
-              error={!!validationErrors.email}
-              helperText={validationErrors.email}
-              autoComplete="email"
-            />
-            <TextField
-              fullWidth
-              label="First Name"
-              name="firstName"
-              value={formData.firstName}
-              onChange={handleChange}
-              margin="normal"
-              disabled={loading}
-              error={!!validationErrors.firstName}
-              helperText={validationErrors.firstName}
-              autoComplete="given-name"
-            />
-            <TextField
-              fullWidth
-              label="Last Name"
-              name="lastName"
-              value={formData.lastName}
-              onChange={handleChange}
-              margin="normal"
-              disabled={loading}
-              error={!!validationErrors.lastName}
-              helperText={validationErrors.lastName}
-              autoComplete="family-name"
-            />
-            <TextField
-              fullWidth
-              label="Current Password"
-              type="password"
-              name="currentPassword"
-              value={formData.currentPassword}
-              onChange={handleChange}
-              margin="normal"
-              disabled={loading}
-              error={!!validationErrors.currentPassword}
-              helperText={validationErrors.currentPassword}
-              autoComplete="current-password"
-            />
-            <TextField
-              fullWidth
-              label="New Password"
-              type="password"
-              name="newPassword"
-              value={formData.newPassword}
-              onChange={handleChange}
-              margin="normal"
-              disabled={loading}
-              error={!!validationErrors.newPassword}
-              helperText={validationErrors.newPassword}
-              autoComplete="new-password"
-            />
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
-              sx={{ mt: 3 }}
-              disabled={loading}
-            >
-              {loading ? <CircularProgress size={24} /> : 'Update Profile'}
-            </Button>
-          </Box>
+          <Grid container spacing={4}>
+            {/* Profile Information Section */}
+            <Grid item xs={12} md={6}>
+              <Typography variant="h6" sx={{ mb: 2 }}>
+                Profile Information
+              </Typography>
+              <Box component="form" onSubmit={handleProfileSubmit}>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      label="First Name"
+                      name="firstName"
+                      value={profileData.firstName}
+                      onChange={handleProfileChange}
+                      margin="normal"
+                      required
+                      disabled={loading}
+                      error={!!validationErrors.firstName}
+                      helperText={validationErrors.firstName}
+                      autoComplete="given-name"
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      label="Last Name"
+                      name="lastName"
+                      value={profileData.lastName}
+                      onChange={handleProfileChange}
+                      margin="normal"
+                      required
+                      disabled={loading}
+                      error={!!validationErrors.lastName}
+                      helperText={validationErrors.lastName}
+                      autoComplete="family-name"
+                    />
+                  </Grid>
+                </Grid>
+                <TextField
+                  fullWidth
+                  label="Username"
+                  name="username"
+                  value={profileData.username}
+                  onChange={handleProfileChange}
+                  margin="normal"
+                  required
+                  disabled={loading}
+                  error={!!validationErrors.username}
+                  helperText={validationErrors.username}
+                  autoComplete="username"
+                />
+                <TextField
+                  fullWidth
+                  label="Email"
+                  type="email"
+                  name="email"
+                  value={profileData.email}
+                  onChange={handleProfileChange}
+                  margin="normal"
+                  required
+                  disabled={loading}
+                  error={!!validationErrors.email}
+                  helperText={validationErrors.email}
+                  autoComplete="email"
+                />
+                <Button
+                  type="submit"
+                  fullWidth
+                  variant="contained"
+                  sx={{ mt: 3 }}
+                  disabled={loading}
+                >
+                  {loading ? <CircularProgress size={24} /> : 'Update Profile'}
+                </Button>
+              </Box>
+            </Grid>
+
+            {/* Password Change Section */}
+            <Grid item xs={12} md={6}>
+              <Typography variant="h6" sx={{ mb: 2 }}>
+                Change Password
+              </Typography>
+              <Box component="form" onSubmit={handlePasswordSubmit}>
+                <TextField
+                  fullWidth
+                  label="Current Password"
+                  type="password"
+                  name="currentPassword"
+                  value={passwordData.currentPassword}
+                  onChange={handlePasswordChange}
+                  margin="normal"
+                  required
+                  disabled={loading}
+                  error={!!validationErrors.currentPassword}
+                  helperText={validationErrors.currentPassword}
+                  autoComplete="current-password"
+                />
+                <TextField
+                  fullWidth
+                  label="New Password"
+                  type="password"
+                  name="newPassword"
+                  value={passwordData.newPassword}
+                  onChange={handlePasswordChange}
+                  margin="normal"
+                  required
+                  disabled={loading}
+                  error={!!validationErrors.newPassword}
+                  helperText={validationErrors.newPassword}
+                  autoComplete="new-password"
+                />
+                <Button
+                  type="submit"
+                  fullWidth
+                  variant="outlined"
+                  sx={{ mt: 3 }}
+                  disabled={loading}
+                >
+                  {loading ? <CircularProgress size={24} /> : 'Update Password'}
+                </Button>
+              </Box>
+            </Grid>
+          </Grid>
         </Paper>
       </Container>
     </Box>

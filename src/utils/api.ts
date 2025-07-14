@@ -1,3 +1,5 @@
+
+
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001'
@@ -5,7 +7,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001'
 class ApiClient {
   private api: AxiosInstance
 
-  constructor(baseURL: string) {
+  constructor(baseURL: string ) {
     this.api = axios.create({
       baseURL,
       headers: {
@@ -24,7 +26,22 @@ class ApiClient {
     this.api.interceptors.response.use(
       (response) => response.data,
       (error) => {
-        const message = error.response?.data || 'Something went wrong'
+        let message = 'Something went wrong'
+        
+        if (error.response?.data) {
+          if (typeof error.response.data === 'object' && error.response.data.message) {
+            message = error.response.data.message
+          } else if (typeof error.response.data === 'string') {
+            message = error.response.data
+          } else if (typeof error.response.data === 'object') {
+            message = JSON.stringify(error.response.data)
+          }
+        } else if (error.message) {
+          message = error.message
+        } else if (error.response?.statusText) {
+          message = error.response.statusText
+        }
+        
         throw new Error(message)
       }
     )
@@ -52,4 +69,3 @@ class ApiClient {
 }
 
 export const apiClient = new ApiClient(API_BASE_URL)
-
