@@ -14,7 +14,7 @@ import {
 } from '@mui/material'
 import { useBlogStore } from '../stores/blogStore'
 import { BlogContent } from '../components/BlogContent'
-import { Blog } from '../types/Blog'
+// import { Blog } from '../types/Blog'
 
 const EditBlogPage = () => {
   const { id } = useParams<{ id: string }>()

@@ -1,3 +1,4 @@
+
 import { create } from 'zustand';
 import { apiClient } from '../utils/api';
 import { User } from '../types/User';
@@ -41,7 +42,7 @@ const getInitialState = () => {
   };
 };
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   ...getInitialState(),
   loading: false,
   error: null,
@@ -49,24 +50,28 @@ export const useAuthStore = create<AuthState>((set) => ({
   login: async (credentials: LoginCredentials) => {
     set({ loading: true, error: null });
     try {
-      const response = await apiClient.post<AuthResponse>('/auth/login', credentials);
+      const response = await apiClient.post<AuthResponse>('/api/auth/login', credentials);
       const { user, token } = response;
       setAuthData(user, token);
       set({ user, token, isAuthenticated: true, loading: false });
     } catch (error: any) {
-      set({ error: error.message, loading: false });
+      console.error('Login error:', error);
+      set({ error: error.message || 'Login failed', loading: false });
+      throw error; // Re-throw to allow component to handle if needed
     }
   },
 
   register: async (data: RegisterData) => {
     set({ loading: true, error: null });
     try {
-      const response = await apiClient.post<AuthResponse>('/auth/register', data);
+      const response = await apiClient.post<AuthResponse>('/api/auth/register', data);
       const { user, token } = response;
       setAuthData(user, token);
       set({ user, token, isAuthenticated: true, loading: false });
     } catch (error: any) {
-      set({ error: error.message, loading: false });
+      console.error('Register error:', error);
+      set({ error: error.message || 'Registration failed', loading: false });
+      throw error; // Re-throw to allow component to handle if needed
     }
   },
 
@@ -83,24 +88,27 @@ export const useAuthStore = create<AuthState>((set) => ({
   updateProfile: async (data: ProfileUpdate) => {
     set({ loading: true, error: null });
     try {
-      const response = await apiClient.put<User>('/users/profile', data);
+      const response = await apiClient.put<User>('/api/user/profile', data);
       localStorage.setItem('user', JSON.stringify(response));
       set({ user: response, loading: false });
     } catch (error: any) {
-      set({ error: error.message, loading: false });
+      console.error('Update profile error:', error);
+      set({ error: error.message || 'Profile update failed', loading: false });
+      throw error;
     }
   },
 
   updatePassword: async (data: PasswordUpdate) => {
     set({ loading: true, error: null });
     try {
-      await apiClient.put('/users/password', data);
+      await apiClient.put('/api/user/password', data);
       set({ loading: false });
     } catch (error: any) {
-      set({ error: error.message, loading: false });
+      console.error('Update password error:', error);
+      set({ error: error.message || 'Password update failed', loading: false });
+      throw error;
     }
   },
 
   clearError: () => set({ error: null })
 }));
-

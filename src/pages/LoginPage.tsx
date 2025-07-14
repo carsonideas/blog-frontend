@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import {
@@ -22,12 +23,21 @@ const LoginPage = () => {
   const [formError, setFormError] = useState('')
   const navigate = useNavigate()
   const location = useLocation()
-  const { login, loading, error, clearError } = useAuthStore()
+  const { login, loading, error, clearError, isAuthenticated } = useAuthStore()
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      const from = location.state?.from?.pathname || '/blogs'
+      navigate(from, { replace: true })
+    }
+  }, [isAuthenticated, navigate, location])
 
   useEffect(() => {
-    // Clear any previous auth errors when component mounts or unmounts
+    // Clear any previous auth errors when component mounts
+    clearError()
     return () => clearError()
-  }, [])
+  }, [clearError])
 
   useEffect(() => {
     // Clear form error when user starts typing
@@ -60,12 +70,12 @@ const LoginPage = () => {
       return
     }
 
-    await login({ emailOrUsername: emailOrUsername.trim(), password: password.trim() })
-    
-    // Check if there's no error after login attempt
-    if (!error) {
-      const from = location.state?.from?.pathname || '/blogs'
-      navigate(from)
+    try {
+      await login({ emailOrUsername: emailOrUsername.trim(), password: password.trim() })
+      // Navigation will be handled by the useEffect above when isAuthenticated changes
+    } catch (error) {
+      // Error is already handled in the store and will be displayed via the error state
+      console.error('Login failed:', error)
     }
   }
 
@@ -158,4 +168,3 @@ const LoginPage = () => {
 }
 
 export default LoginPage
-

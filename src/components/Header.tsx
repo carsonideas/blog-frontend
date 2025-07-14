@@ -13,7 +13,7 @@ import {
   useTheme,
 } from '@mui/material';
 import {
-  AccountCircle,
+  // AccountCircle,
   Brightness4,
   Brightness7,
   Create as CreateIcon
@@ -22,6 +22,7 @@ import { useAuthStore } from '../stores/authStore';
 
 interface HeaderProps {
   toggleTheme: () => void;
+  
 }
 
 export const Header: React.FC<HeaderProps> = ({ toggleTheme }) => {
