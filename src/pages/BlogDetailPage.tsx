@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import {
   Container,
@@ -11,68 +11,47 @@ import {
   CircularProgress,
 } from '@mui/material'
 import { ArrowBack, Edit, Delete } from '@mui/icons-material'
-import { marked } from 'marked'
-import { apiClient } from '../utils/api'
-import { authStore } from '../stores/authStore'
+import { useBlogStore } from '../stores/blogStore'
+import { useAuthStore } from '../stores/authStore'
+import { BlogContent } from '../components/BlogContent'
+import { formatDate, getRelativeTime } from '../utils/dateFormat'
 import { Blog } from '../types/Blog'
 
 const BlogDetailPage = () => {
   const { id } = useParams<{ id: string }>()
-  const [blog, setBlog] = useState<Blog | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [deleting, setDeleting] = useState(false)
   const navigate = useNavigate()
-  const currentUser = authStore.getUser()
+  const { user } = useAuthStore()
+  const {
+    currentBlog: blog,
+    loading,
+    error,
+    fetchBlogById,
+    deleteBlog,
+    loading: deleteLoading,
+    error: deleteError,
+    clearError,
+  } = useBlogStore()
 
   useEffect(() => {
-    const fetchBlog = async () => {
-      if (!id) return
-
-      try {
-        const response = await apiClient.get<Blog>(`/blogs/${id}`)
-        setBlog(response)
-      } catch (err) {
-        setError('Blog not found')
-      } finally {
-        setLoading(false)
-      }
+    if (id) {
+      fetchBlogById(id)
     }
-
-    fetchBlog()
-  }, [id])
+    return () => {
+      clearError()
+    }
+  }, [id, fetchBlogById, clearError])
 
   const handleDelete = async () => {
-    if (!blog || !window.confirm('Are you sure you want to delete this blog?')) return
+    if (!blog || !id) return
 
-    setDeleting(true)
-    try {
-      await apiClient.delete(`/blogs/${blog.id}`)
+    await deleteBlog(id)
+    if (!deleteError) {
       navigate('/blogs')
-    } catch (err) {
-      setError('Failed to delete blog')
-    } finally {
-      setDeleting(false)
     }
-  }
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    })
   }
 
   const getAuthorDisplayName = (blog: Blog) => {
-    if (blog.author?.firstName && blog.author?.lastName) {
-      return `${blog.author.firstName} ${blog.author.lastName}`
-    }
     return blog.author?.username || 'Unknown Author'
-  }
-
-  const convertMarkdownToHtml = (markdown: string) => {
-    return marked(markdown)
   }
 
   if (loading) {
@@ -103,7 +82,7 @@ const BlogDetailPage = () => {
     )
   }
 
-  const isAuthor = currentUser?.id === blog.authorId
+  const isAuthor = user?.id === blog.authorId
 
   return (
     <Box sx={{ py: 4 }}>
@@ -142,34 +121,30 @@ const BlogDetailPage = () => {
             src={blog.author?.profileImage}
             sx={{ width: 40, height: 40 }}
           >
-            {blog.author?.username[0]?.toUpperCase()}
+            {blog.author?.username?.[0]?.toUpperCase()}
           </Avatar>
           <Box>
             <Typography variant="subtitle1">
               {getAuthorDisplayName(blog)}
             </Typography>
             <Chip
-              label={formatDate(blog.createdAt)}
+              label={getRelativeTime(blog.createdAt)}
               size="small"
               variant="outlined"
+              title={formatDate(blog.createdAt)}
             />
           </Box>
         </Box>
 
-        <Box
-          sx={{ mb: 4 }}
-          dangerouslySetInnerHTML={{
-            __html: convertMarkdownToHtml(blog.content),
-          }}
-        />
+        <BlogContent content={blog.content} />
 
         {isAuthor && (
-          <Box sx={{ display: 'flex', gap: 2 }}>
+          <Box sx={{ display: 'flex', gap: 2, mt: 4 }}>
             <Button
               variant="contained"
               startIcon={<Edit />}
               component={Link}
-              to={`/edit-blog/${blog.id}`}
+              to={`/blogs/${blog.id}/edit`}
             >
               Edit Blog
             </Button>
@@ -178,16 +153,16 @@ const BlogDetailPage = () => {
               color="error"
               startIcon={<Delete />}
               onClick={handleDelete}
-              disabled={deleting}
+              disabled={deleteLoading}
             >
-              {deleting ? 'Deleting...' : 'Delete Blog'}
+              {deleteLoading ? 'Deleting...' : 'Delete Blog'}
             </Button>
           </Box>
         )}
 
-        {error && (
+        {deleteError && (
           <Alert severity="error" sx={{ mt: 2 }}>
-            {error}
+            {deleteError}
           </Alert>
         )}
       </Container>

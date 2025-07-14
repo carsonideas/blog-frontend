@@ -10,38 +10,64 @@ import {
   Alert,
   CircularProgress,
 } from '@mui/material'
-import { apiClient } from '../utils/api'
-import { authStore } from '../stores/authStore'
+import { useAuthStore } from '../stores/authStore'
+import { isValidEmail, isValidPassword, isValidUsername } from '../utils/validation'
 
 const RegisterPage = () => {
-  const [username, setUsername] = useState('')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [formData, setFormData] = useState({
+    username: '',
+    email: '',
+    password: ''
+  })
+  const [validationErrors, setValidationErrors] = useState({
+    username: '',
+    email: '',
+    password: ''
+  })
+  
   const navigate = useNavigate()
+  const { register, loading, error } = useAuthStore()
+
+  const validateForm = () => {
+    const errors = {
+      username: '',
+      email: '',
+      password: ''
+    }
+
+    if (!isValidUsername(formData.username)) {
+      errors.username = 'Username must be 3-20 characters and can only contain letters, numbers, and underscores'
+    }
+
+    if (!isValidEmail(formData.email)) {
+      errors.email = 'Please enter a valid email address'
+    }
+
+    if (!isValidPassword(formData.password)) {
+      errors.password = 'Password must be at least 8 characters long and contain uppercase, lowercase, number, and special character'
+    }
+
+    setValidationErrors(errors)
+    return !errors.username && !errors.email && !errors.password
+  }
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setFormData(prev => ({ ...prev, [name]: value }))
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
-    setError('')
 
-    try {
-      const response = await apiClient.post<{
-        user: any
-        token: string
-      }>('/auth/register', {
-        username,
-        email,
-        password,
-      })
+    if (!validateForm()) {
+      return
+    }
 
-      authStore.setAuth(response.user, response.token)
+    await register(formData)
+    
+    // Check if there's no error after registration attempt
+    if (!error) {
       navigate('/blogs')
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Registration failed')
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -67,31 +93,43 @@ const RegisterPage = () => {
             <TextField
               fullWidth
               label="Username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              name="username"
+              value={formData.username}
+              onChange={handleChange}
               margin="normal"
               required
               disabled={loading}
+              error={!!validationErrors.username}
+              helperText={validationErrors.username}
+              autoComplete="username"
             />
             <TextField
               fullWidth
               label="Email"
+              name="email"
               type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={formData.email}
+              onChange={handleChange}
               margin="normal"
               required
               disabled={loading}
+              error={!!validationErrors.email}
+              helperText={validationErrors.email}
+              autoComplete="email"
             />
             <TextField
               fullWidth
               label="Password"
+              name="password"
               type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              value={formData.password}
+              onChange={handleChange}
               margin="normal"
               required
               disabled={loading}
+              error={!!validationErrors.password}
+              helperText={validationErrors.password}
+              autoComplete="new-password"
             />
             <Button
               type="submit"

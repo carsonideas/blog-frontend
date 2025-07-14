@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   AppBar,
   Toolbar,
@@ -10,59 +10,79 @@ import {
   Menu,
   MenuItem,
   IconButton,
-} from '@mui/material'
-import { AccountCircle } from '@mui/icons-material'
-import { authStore } from '../stores/authStore'
-import { User } from '../types/User'
+  useTheme,
+} from '@mui/material';
+import {
+  AccountCircle,
+  Brightness4,
+  Brightness7,
+  Create as CreateIcon
+} from '@mui/icons-material';
+import { useAuthStore } from '../stores/authStore';
 
-const Header = () => {
-  const [user, setUser] = useState<User | null>(authStore.getUser())
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
-  const navigate = useNavigate()
+interface HeaderProps {
+  toggleTheme: () => void;
+}
 
-  useEffect(() => {
-    const unsubscribe = authStore.subscribe(() => {
-      setUser(authStore.getUser())
-    })
-
-    return unsubscribe
-  }, [])
+export const Header: React.FC<HeaderProps> = ({ toggleTheme }) => {
+  const theme = useTheme();
+  const navigate = useNavigate();
+  const { user, logout, isAuthenticated } = useAuthStore();
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
   const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget)
-  }
+    setAnchorEl(event.currentTarget);
+  };
 
   const handleClose = () => {
-    setAnchorEl(null)
-  }
+    setAnchorEl(null);
+  };
 
   const handleLogout = () => {
-    authStore.clearAuth()
-    handleClose()
-    navigate('/')
-  }
+    logout();
+    handleClose();
+    navigate('/');
+  };
 
   const handleProfile = () => {
-    handleClose()
-    navigate('/profile')
-  }
+    handleClose();
+    navigate('/profile');
+  };
+
+  const getInitials = (firstName?: string, lastName?: string) => {
+    return `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase() || user?.username?.[0]?.toUpperCase() || '?';
+  };
 
   return (
-    <AppBar position="static">
+    <AppBar position="sticky">
       <Toolbar>
         <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
           <Link to="/" style={{ color: 'inherit', textDecoration: 'none' }}>
-            Blog App
+            BlogIt
           </Link>
         </Typography>
 
-        {user ? (
+        <IconButton sx={{ mr: 1 }} onClick={toggleTheme} color="inherit">
+          {theme.palette.mode === 'dark' ? <Brightness7 /> : <Brightness4 />}
+        </IconButton>
+
+        {isAuthenticated ? (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Button color="inherit" component={Link} to="/blogs">
+            <Button
+              color="inherit"
+              component={Link}
+              to="/blogs"
+              startIcon={<CreateIcon />}
+            >
               Blogs
             </Button>
-            <Button color="inherit" component={Link} to="/create-blog">
-              Create Blog
+            <Button
+              color="inherit"
+              component={Link}
+              to="/create-blog"
+              startIcon={<CreateIcon />}
+            >
+              Create
             </Button>
             <IconButton
               size="large"
@@ -72,17 +92,23 @@ const Header = () => {
               onClick={handleMenu}
               color="inherit"
             >
-              {user.profileImage ? (
-                <Avatar src={user.profileImage} alt={user.username} />
+              {user?.profileImage ? (
+                <Avatar 
+                  src={user.profileImage} 
+                  alt={user.username}
+                  sx={{ width: 32, height: 32 }}
+                />
               ) : (
-                <AccountCircle />
+                <Avatar sx={{ width: 32, height: 32, bgcolor: 'secondary.main' }}>
+                  {getInitials(user?.firstName, user?.lastName)}
+                </Avatar>
               )}
             </IconButton>
             <Menu
               id="menu-appbar"
               anchorEl={anchorEl}
               anchorOrigin={{
-                vertical: 'top',
+                vertical: 'bottom',
                 horizontal: 'right',
               }}
               keepMounted
@@ -99,18 +125,26 @@ const Header = () => {
           </Box>
         ) : (
           <Box sx={{ display: 'flex', gap: 1 }}>
-            <Button color="inherit" component={Link} to="/login">
+            <Button 
+              color="inherit" 
+              component={Link} 
+              to="/login"
+              variant="outlined"
+            >
               Login
             </Button>
-            <Button color="inherit" component={Link} to="/register">
+            <Button 
+              color="secondary" 
+              component={Link} 
+              to="/register"
+              variant="contained"
+            >
               Register
             </Button>
           </Box>
         )}
       </Toolbar>
     </AppBar>
-  )
-}
-
-export default Header
+  );
+};
 

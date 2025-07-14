@@ -12,30 +12,20 @@ import {
   TextField,
   InputAdornment,
   Grid,
+  Alert,
+  CircularProgress,
 } from '@mui/material'
 import { Search } from '@mui/icons-material'
-import { apiClient } from '../utils/api'
+import { useBlogStore } from '../stores/blogStore'
+import { formatDate, getRelativeTime } from '../utils/dateFormat'
 import { Blog } from '../types/Blog'
 
 const BlogsPage = () => {
-  const [blogs, setBlogs] = useState<Blog[]>([])
-  const [filteredBlogs, setFilteredBlogs] = useState<Blog[]>([])
-  const [loading, setLoading] = useState(true)
+  const { blogs, fetchBlogs, loading, error } = useBlogStore()
   const [searchTerm, setSearchTerm] = useState('')
+  const [filteredBlogs, setFilteredBlogs] = useState(blogs)
 
   useEffect(() => {
-    const fetchBlogs = async () => {
-      try {
-        const response = await apiClient.get<Blog[]>('/blogs')
-        setBlogs(response)
-        setFilteredBlogs(response)
-      } catch (error) {
-        console.error('Failed to fetch blogs:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
     fetchBlogs()
   }, [])
 
@@ -43,8 +33,6 @@ const BlogsPage = () => {
     if (searchTerm) {
       const filtered = blogs.filter(blog =>
         blog.author?.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        blog.author?.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        blog.author?.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         blog.title.toLowerCase().includes(searchTerm.toLowerCase())
       )
       setFilteredBlogs(filtered)
@@ -53,27 +41,23 @@ const BlogsPage = () => {
     }
   }, [searchTerm, blogs])
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString()
-  }
-
   const getAuthorDisplayName = (blog: Blog) => {
-    if (blog.author?.firstName && blog.author?.lastName) {
-      return `${blog.author.firstName} ${blog.author.lastName}`
-    }
     return blog.author?.username || 'Unknown Author'
-  }
-
-  const truncateContent = (content: string, maxLength: number = 150) => {
-    if (content.length <= maxLength) return content
-    return content.substring(0, maxLength) + '...'
   }
 
   if (loading) {
     return (
+      <Box sx={{ py: 4, display: 'flex', justifyContent: 'center' }}>
+        <CircularProgress />
+      </Box>
+    )
+  }
+
+  if (error) {
+    return (
       <Box sx={{ py: 4 }}>
         <Container maxWidth="lg">
-          <Typography>Loading blogs...</Typography>
+          <Alert severity="error">{error}</Alert>
         </Container>
       </Box>
     )
@@ -110,13 +94,14 @@ const BlogsPage = () => {
                   display: 'flex',
                   flexDirection: 'column',
                   cursor: 'pointer',
+                  transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
                   '&:hover': {
                     transform: 'translateY(-4px)',
-                    transition: 'transform 0.2s ease-in-out',
+                    boxShadow: (theme) => theme.shadows[4],
                   },
                 }}
                 component={Link}
-                to={`/blog/${blog.id}`}
+                to={`/blogs/${blog.id}`}
                 style={{ textDecoration: 'none' }}
               >
                 {blog.imageUrl && (
@@ -133,22 +118,25 @@ const BlogsPage = () => {
                     {blog.title}
                   </Typography>
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                    {truncateContent(blog.content)}
+                    {blog.content.length > 150
+                      ? `${blog.content.substring(0, 150)}...`
+                      : blog.content}
                   </Typography>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                     <Avatar
                       src={blog.author?.profileImage}
                       sx={{ width: 24, height: 24 }}
                     >
-                      {blog.author?.username[0]?.toUpperCase()}
+                      {blog.author?.username?.[0]?.toUpperCase()}
                     </Avatar>
                     <Typography variant="body2" color="text.secondary">
                       {getAuthorDisplayName(blog)}
                     </Typography>
                     <Chip
-                      label={formatDate(blog.createdAt)}
+                      label={getRelativeTime(blog.createdAt)}
                       size="small"
                       variant="outlined"
+                      title={formatDate(blog.createdAt)}
                     />
                   </Box>
                 </CardContent>

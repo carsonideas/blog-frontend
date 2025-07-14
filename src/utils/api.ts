@@ -1,58 +1,53 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+import axios, { AxiosInstance, AxiosRequestConfig } from 'axios'
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001'
 
 class ApiClient {
-  private baseURL: string
+  private api: AxiosInstance
 
   constructor(baseURL: string) {
-    this.baseURL = baseURL
-  }
-
-  private async request<T>(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<T> {
-    const url = `${this.baseURL}${endpoint}`
-    const token = localStorage.getItem('token')
-
-    const config: RequestInit = {
+    this.api = axios.create({
+      baseURL,
       headers: {
-        'Content-Type': 'application/json',
-        ...(token && { Authorization: `Bearer ${token}` }),
-        ...options.headers,
-      },
-      ...options,
-    }
-
-    const response = await fetch(url, config)
-
-    if (!response.ok) {
-      const error = await response.text()
-      throw new Error(error || 'Something went wrong')
-    }
-
-    return response.json()
-  }
-
-  async get<T>(endpoint: string): Promise<T> {
-    return this.request<T>(endpoint, { method: 'GET' })
-  }
-
-  async post<T>(endpoint: string, data?: any): Promise<T> {
-    return this.request<T>(endpoint, {
-      method: 'POST',
-      body: data ? JSON.stringify(data) : undefined,
+        'Content-Type': 'application/json'
+      }
     })
-  }
 
-  async put<T>(endpoint: string, data?: any): Promise<T> {
-    return this.request<T>(endpoint, {
-      method: 'PUT',
-      body: data ? JSON.stringify(data) : undefined,
+    this.api.interceptors.request.use((config) => {
+      const token = localStorage.getItem('token')
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`
+      }
+      return config
     })
+
+    this.api.interceptors.response.use(
+      (response) => response.data,
+      (error) => {
+        const message = error.response?.data || 'Something went wrong'
+        throw new Error(message)
+      }
+    )
   }
 
-  async delete<T>(endpoint: string): Promise<T> {
-    return this.request<T>(endpoint, { method: 'DELETE' })
+  async get<T>(endpoint: string, config?: AxiosRequestConfig): Promise<T> {
+    return this.api.get(endpoint, config)
+  }
+
+  async post<T>(endpoint: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+    return this.api.post(endpoint, data, config)
+  }
+
+  async put<T>(endpoint: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+    return this.api.put(endpoint, data, config)
+  }
+
+  async patch<T>(endpoint: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+    return this.api.patch(endpoint, data, config)
+  }
+
+  async delete<T>(endpoint: string, config?: AxiosRequestConfig): Promise<T> {
+    return this.api.delete(endpoint, config)
   }
 }
 

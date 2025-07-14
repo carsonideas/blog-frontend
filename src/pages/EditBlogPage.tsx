@@ -9,63 +9,61 @@ import {
   Box,
   Alert,
   CircularProgress,
+  Tabs,
+  Tab,
 } from '@mui/material'
-import { apiClient } from '../utils/api'
+import { useBlogStore } from '../stores/blogStore'
+import { BlogContent } from '../components/BlogContent'
 import { Blog } from '../types/Blog'
 
 const EditBlogPage = () => {
   const { id } = useParams<{ id: string }>()
-  const [blog, setBlog] = useState<Blog | null>(null)
-  const [title, setTitle] = useState('')
-  const [content, setContent] = useState('')
-  const [imageUrl, setImageUrl] = useState('')
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
+  const [formData, setFormData] = useState({
+    title: '',
+    content: '',
+    imageUrl: ''
+  })
+  const [activeTab, setActiveTab] = useState(0)
   const navigate = useNavigate()
+  const { currentBlog, loading, error, fetchBlogById, updateBlog } = useBlogStore()
 
   useEffect(() => {
-    const fetchBlog = async () => {
-      if (!id) return
-
-      try {
-        const response = await apiClient.get<Blog>(`/blogs/${id}`)
-        setBlog(response)
-        setTitle(response.title)
-        setContent(response.content)
-        setImageUrl(response.imageUrl || '')
-      } catch (err) {
-        setError('Blog not found')
-      } finally {
-        setLoading(false)
-      }
+    if (id) {
+      fetchBlogById(id)
     }
+  }, [id, fetchBlogById])
 
-    fetchBlog()
-  }, [id])
+  useEffect(() => {
+    if (currentBlog) {
+      setFormData({
+        title: currentBlog.title,
+        content: currentBlog.content,
+        imageUrl: currentBlog.imageUrl || ''
+      })
+    }
+  }, [currentBlog])
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setFormData(prev => ({ ...prev, [name]: value }))
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!blog) return
+    if (!currentBlog?.id) return
 
-    setSaving(true)
-    setError('')
-
-    try {
-      await apiClient.put(`/blogs/${blog.id}`, {
-        title,
-        content,
-        imageUrl,
-      })
-      navigate(`/blog/${blog.id}`)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update blog')
-    } finally {
-      setSaving(false)
+    await updateBlog(currentBlog.id, formData)
+    
+    if (!error) {
+      navigate(`/blog/${currentBlog.id}`)
     }
   }
 
-  if (loading) {
+  const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
+    setActiveTab(newValue)
+  }
+
+  if (loading && !currentBlog) {
     return (
       <Box sx={{ py: 4, display: 'flex', justifyContent: 'center' }}>
         <CircularProgress />
@@ -73,7 +71,7 @@ const EditBlogPage = () => {
     )
   }
 
-  if (error && !blog) {
+  if (error && !currentBlog) {
     return (
       <Box sx={{ py: 4 }}>
         <Container maxWidth="md">
@@ -105,44 +103,74 @@ const EditBlogPage = () => {
             <TextField
               fullWidth
               label="Blog Title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              name="title"
+              value={formData.title}
+              onChange={handleChange}
               margin="normal"
               required
-              disabled={saving}
-            />
-            <TextField
-              fullWidth
-              label="Blog Content"
-              multiline
-              rows={12}
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              margin="normal"
-              required
-              disabled={saving}
-              helperText="You can use Markdown formatting"
+              disabled={loading}
             />
             <TextField
               fullWidth
               label="Image URL (Optional)"
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
+              name="imageUrl"
+              value={formData.imageUrl}
+              onChange={handleChange}
               margin="normal"
-              disabled={saving}
+              disabled={loading}
+              helperText="Enter a URL for the blog's featured image"
             />
+
+            <Box sx={{ borderBottom: 1, borderColor: 'divider', mt: 2, mb: 2 }}>
+              <Tabs value={activeTab} onChange={handleTabChange}>
+                <Tab label="Write" />
+                <Tab label="Preview" />
+              </Tabs>
+            </Box>
+
+            <Box hidden={activeTab !== 0}>
+              <TextField
+                fullWidth
+                label="Blog Content (Markdown)"
+                name="content"
+                multiline
+                rows={12}
+                value={formData.content}
+                onChange={handleChange}
+                margin="normal"
+                required
+                disabled={loading}
+                helperText="Use Markdown syntax for formatting"
+              />
+            </Box>
+
+            <Box hidden={activeTab !== 1} sx={{ mt: 2, minHeight: '300px' }}>
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                Preview
+              </Typography>
+              <Paper variant="outlined" sx={{ p: 2 }}>
+                {formData.content ? (
+                  <BlogContent content={formData.content} />
+                ) : (
+                  <Typography color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                    Start writing to see the preview...
+                  </Typography>
+                )}
+              </Paper>
+            </Box>
+
             <Box sx={{ display: 'flex', gap: 2, mt: 3 }}>
               <Button
                 type="submit"
                 variant="contained"
-                disabled={saving}
+                disabled={loading}
               >
-                {saving ? <CircularProgress size={24} /> : 'Update Blog'}
+                {loading ? <CircularProgress size={24} /> : 'Update Blog'}
               </Button>
               <Button
                 variant="outlined"
-                onClick={() => navigate(`/blog/${blog?.id}`)}
-                disabled={saving}
+                onClick={() => navigate(`/blog/${currentBlog?.id}`)}
+                disabled={loading}
               >
                 Cancel
               </Button>
