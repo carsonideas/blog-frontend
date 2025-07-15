@@ -55,11 +55,24 @@ export const Header: React.FC<HeaderProps> = ({ toggleTheme }) => {
   };
 
   return (
-    <AppBar position="sticky">
-      <Toolbar>
-        <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+    <AppBar position="sticky" sx={{background: "linear-gradient(135deg, #801b3bff, #1d2671 100%)",
+      borderRadius: 0,
+    }}>
+      <Toolbar >
+        <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontSize: 50,
+          fontWeight: 700,
+                  // background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  // background: "linear-gradient(135deg, #c33764, #1d2671 100%)",
+                  background: "linear-gradient(1deg, #dd5e89, #f7bb97) 100%",
+                  backgroundClip: 'text',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  // mb: 3,
+                  
+         }} >
           <Link to="/" style={{ color: 'inherit', textDecoration: 'none' }}>
             BlogIt
+            
           </Link>
         </Typography>
 
@@ -73,7 +86,17 @@ export const Header: React.FC<HeaderProps> = ({ toggleTheme }) => {
               color="inherit"
               component={Link}
               to="/blogs"
-              startIcon={<CreateIcon />}
+              
+              // startIcon={<CreateIcon />}
+              sx={{ fontSize: 19,
+                fontWeight: 700,
+                  // background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  // background: "linear-gradient(135deg, #c33764, #1d2671 100%)",
+                  background: "linear-gradient(1deg, #dd5e89, #f7bb97) 100%",
+                  backgroundClip: 'text',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+               }}
             >
               Blogs
             </Button>
@@ -82,6 +105,16 @@ export const Header: React.FC<HeaderProps> = ({ toggleTheme }) => {
               component={Link}
               to="/create-blog"
               startIcon={<CreateIcon />}
+              sx={{ fontSize: 19,
+                fontWeight: 700,
+                  // background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  // background: "linear-gradient(135deg, #c33764, #1d2671 100%)",
+                  background: "linear-gradient(1deg, #dd5e89, #f7bb97) 100%",
+                  backgroundClip: 'text',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+               }}
+              
             >
               Create
             </Button>
