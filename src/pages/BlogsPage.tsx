@@ -1,39 +1,43 @@
+
+
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
 import {
   Container,
   Typography,
-  Card,
-  CardContent,
-  CardMedia,
   Box,
-  Avatar,
-  Chip,
   TextField,
   InputAdornment,
   Grid,
   Alert,
   CircularProgress,
+  Fab,
 } from '@mui/material'
-import { Search } from '@mui/icons-material'
+import { Search, Add } from '@mui/icons-material'
+import { Link } from 'react-router-dom'
 import { useBlogStore } from '../stores/blogStore'
-import { formatDate, getRelativeTime } from '../utils/dateFormat'
+import { useAuthStore } from '../stores/authStore'
+import { BlogCard } from '../components/BlogCard'
 import { Blog } from '../types/Blog'
 
 const BlogsPage = () => {
-  const { blogs, fetchBlogs, loading, error } = useBlogStore()
+  const { blogs, fetchBlogs, loading, error, clearError } = useBlogStore()
+  const { isAuthenticated } = useAuthStore()
   const [searchTerm, setSearchTerm] = useState('')
-  const [filteredBlogs, setFilteredBlogs] = useState(blogs)
+  const [filteredBlogs, setFilteredBlogs] = useState<Blog[]>([])
 
   useEffect(() => {
     fetchBlogs()
-  }, [])
+    return () => clearError()
+  }, [fetchBlogs, clearError])
 
   useEffect(() => {
     if (searchTerm) {
       const filtered = blogs.filter(blog =>
-        blog.author?.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        blog.title.toLowerCase().includes(searchTerm.toLowerCase())
+        blog.author?.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        blog.author?.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        blog.author?.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        blog.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        blog.content.toLowerCase().includes(searchTerm.toLowerCase())
       )
       setFilteredBlogs(filtered)
     } else {
@@ -41,14 +45,10 @@ const BlogsPage = () => {
     }
   }, [searchTerm, blogs])
 
-  const getAuthorDisplayName = (blog: Blog) => {
-    return blog.author?.username || 'Unknown Author'
-  }
-
   if (loading) {
     return (
-      <Box sx={{ py: 4, display: 'flex', justifyContent: 'center' }}>
-        <CircularProgress />
+      <Box sx={{ py: 8, display: 'flex', justifyContent: 'center' }}>
+        <CircularProgress size={40} />
       </Box>
     )
   }
@@ -57,25 +57,40 @@ const BlogsPage = () => {
     return (
       <Box sx={{ py: 4 }}>
         <Container maxWidth="lg">
-          <Alert severity="error">{error}</Alert>
+          <Alert severity="error" sx={{ mb: 3 }}>
+            {error}
+          </Alert>
         </Container>
       </Box>
     )
   }
 
   return (
-    <Box sx={{ py: 4 }}>
+    <Box sx={{ py: 4, minHeight: '100vh', bgcolor: 'grey.50' }}>
       <Container maxWidth="lg">
-        <Typography variant="h4" component="h1" sx={{ mb: 4 }}>
-          Recent blog posts
-        </Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+          <Typography variant="h4" component="h1" sx={{ fontWeight: 700 }}>
+            Recent Blog Posts
+          </Typography>
+          {blogs.length > 0 && (
+            <Typography variant="body2" color="text.secondary">
+              {filteredBlogs.length} of {blogs.length} posts
+            </Typography>
+          )}
+        </Box>
 
         <TextField
           fullWidth
-          placeholder="Search by author name or blog title..."
+          placeholder="Search by author, title, or content..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          sx={{ mb: 4 }}
+          sx={{ 
+            mb: 4,
+            '& .MuiOutlinedInput-root': {
+              bgcolor: 'white',
+              borderRadius: 2
+            }
+          }}
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
@@ -85,72 +100,43 @@ const BlogsPage = () => {
           }}
         />
 
-        <Grid container spacing={3}>
-          {filteredBlogs.map((blog) => (
-            <Grid item xs={12} md={6} lg={4} key={blog.id}>
-              <Card
-                sx={{
-                  height: '100%',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  cursor: 'pointer',
-                  transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
-                  '&:hover': {
-                    transform: 'translateY(-4px)',
-                    boxShadow: (theme) => theme.shadows[4],
-                  },
-                }}
-                component={Link}
-                to={`/blogs/${blog.id}`}
-                style={{ textDecoration: 'none' }}
-              >
-                {blog.imageUrl && (
-                  <CardMedia
-                    component="img"
-                    height="200"
-                    image={blog.imageUrl}
-                    alt={blog.title}
-                    sx={{ objectFit: 'cover' }}
-                  />
-                )}
-                <CardContent sx={{ flexGrow: 1 }}>
-                  <Typography variant="h6" component="h2" gutterBottom>
-                    {blog.title}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                    {blog.content.length > 150
-                      ? `${blog.content.substring(0, 150)}...`
-                      : blog.content}
-                  </Typography>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                    <Avatar
-                      src={blog.author?.profileImage}
-                      sx={{ width: 24, height: 24 }}
-                    >
-                      {blog.author?.username?.[0]?.toUpperCase()}
-                    </Avatar>
-                    <Typography variant="body2" color="text.secondary">
-                      {getAuthorDisplayName(blog)}
-                    </Typography>
-                    <Chip
-                      label={getRelativeTime(blog.createdAt)}
-                      size="small"
-                      variant="outlined"
-                      title={formatDate(blog.createdAt)}
-                    />
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
-
-        {filteredBlogs.length === 0 && (
+        {filteredBlogs.length > 0 ? (
+          <Grid container spacing={3}>
+            {filteredBlogs.map((blog) => (
+              <Grid item xs={12} sm={6} lg={4} key={blog.id}>
+                <BlogCard blog={blog} showActions={true} />
+              </Grid>
+            ))}
+          </Grid>
+        ) : (
           <Box sx={{ textAlign: 'center', py: 8 }}>
-            <Typography variant="h6" color="text.secondary">
+            <Typography variant="h6" color="text.secondary" gutterBottom>
               {searchTerm ? 'No blogs found matching your search.' : 'No blogs available yet.'}
             </Typography>
+            {!searchTerm && isAuthenticated && (
+              <Typography variant="body2" color="text.secondary">
+                Be the first to share your thoughts!
+              </Typography>
+            )}
           </Box>
+        )}
+
+        {/* Floating Action Button for creating new blog */}
+        {isAuthenticated && (
+          <Fab
+            color="primary"
+            aria-label="create blog"
+            component={Link}
+            to="/blogs/create"
+            sx={{
+              position: 'fixed',
+              bottom: 24,
+              right: 24,
+              zIndex: 1000
+            }}
+          >
+            <Add />
+          </Fab>
         )}
       </Container>
     </Box>
@@ -158,4 +144,3 @@ const BlogsPage = () => {
 }
 
 export default BlogsPage
-

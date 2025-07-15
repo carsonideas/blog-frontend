@@ -1,13 +1,14 @@
 /**
- * Email validation using a regular expression
+ * my email validation using a regular expression
  */
+
 export const isValidEmail = (email: string): boolean => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
 };
 
 /**
- * Password validation rules:
+ * my preser Password validation rules:
  * - At least 8 characters long
  * - Contains at least one uppercase letter
  * - Contains at least one lowercase letter
@@ -26,7 +27,7 @@ export const isValidPassword = (password: string): boolean => {
 };
 
 /**
- * Username validation rules:
+ * my Username validation rules:
  * - Between 3 and 20 characters long
  * - Contains only alphanumeric characters and underscores
  * - Starts with a letter
@@ -37,7 +38,7 @@ export const isValidUsername = (username: string): boolean => {
 };
 
 /**
- * Name validation rules:
+ * my name validation rules:
  * - Between 2 and 50 characters long
  * - Contains only letters, spaces, hyphens, and apostrophes
  */
@@ -63,5 +64,5 @@ export const isValidBlogTitle = (title: string): boolean => {
  */
 export const isValidBlogContent = (content: string): boolean => {
   const trimmedContent = content.trim();
-  return trimmedContent.length >= 100;
+  return trimmedContent.length >= 10;
 };

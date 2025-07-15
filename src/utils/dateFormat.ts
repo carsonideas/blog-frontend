@@ -13,10 +13,12 @@ export const formatDate = (dateString: string): string => {
 };
 
 /**
- * Returns a relative time string (e.g., "2 hours ago")
+ * 
  * @param dateString ISO date string
  * @returns Relative time string
  */
+
+
 export const getRelativeTime = (dateString: string): string => {
   const date = new Date(dateString);
   const now = new Date();
@@ -49,6 +51,8 @@ export const getRelativeTime = (dateString: string): string => {
  * @param dateString ISO date string
  * @returns Formatted date and time string
  */
+
+
 export const formatDateTime = (dateString: string): string => {
   const date = new Date(dateString);
   return new Intl.DateTimeFormat('en-US', {
